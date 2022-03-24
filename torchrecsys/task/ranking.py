@@ -7,7 +7,7 @@ class Ranking():
     
     def __call__(self, query_embeddings, candidate_embeddings):
         scores = torch.matmul(
-            query_embeddings, torch.transpose(candidate_embeddings,0,1)
+            query_embeddings, candidate_embeddings.t()
         )
         
         num_queries, num_candidates = scores.shape
