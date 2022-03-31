@@ -1,4 +1,9 @@
 ### Python ###
+
+##Repo specific
+data/
+ml-100k/
+predict*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -1,8 +1,11 @@
 import torch
+from torchmetrics import RetrievalNormalizedDCG
+
 
 class Ranking():
-    def __init__(self):
+    def __init__(self, metric=None):
         self.loss = torch.nn.CrossEntropyLoss(reduction="sum")
+        self.metric = metric
         pass
     
     def __call__(self, query_embeddings, candidate_embeddings):
@@ -12,9 +15,12 @@ class Ranking():
         
         num_queries, num_candidates = scores.shape
 
-        labels = torch.range(0, num_queries-1, dtype=int)
+        labels = torch.arange(0, num_queries, dtype=int, device=scores.device)
     
-    
-        loss = self.loss(input=scores, target=labels)
         
+        loss = self.loss(input=scores, target=labels)
+        if self.metric is not None:
+            r = self.metric(query_embeddings, candidate_embeddings)
+            
+            
         return loss
