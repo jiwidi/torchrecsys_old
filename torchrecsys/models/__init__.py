@@ -1,3 +1,3 @@
-from .models import BaseModel
+from .models import BaseModel, popularityModel, matrixFactorizationModel
 
-__all__ = ["BaseModel"]
+__all__ = ["BaseModel", "popularityModel", "matrixFactorizationModel"]
