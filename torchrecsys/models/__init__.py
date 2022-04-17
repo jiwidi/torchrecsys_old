@@ -1,3 +1,4 @@
-from .models import BaseModel, popularityModel, matrixFactorizationModel
+from .base import BaseModel
+from .neuralcf import NeuralCF
 
-__all__ = ["BaseModel", "popularityModel", "matrixFactorizationModel"]
+__all__ = ["BaseModel", "NeuralCF"]

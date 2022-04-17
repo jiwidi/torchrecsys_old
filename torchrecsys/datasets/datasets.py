@@ -2,9 +2,21 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 
+def dataframe_schema(df):
+    r = []
+    for col in df.columns.values:
+        col_schema = [df[col].dtype.name, len(df[col].unique())]
+        r.append(col_schema)
+        
+    return r
 class InteractionsDataset(torch.utils.data.Dataset):
     def __init__(self, interactions, item_features, user_features, sample_negatives=0, target_column=None):
-        self.interactions = interactions.values
+        interactions = interactions[interactions.columns[:2]]
+        context_features = interactions[interactions.columns[2:]]
+        
+        self.interactions = interactions.values #First two columns: userid, itemid
+        self.context_features = context_features.values
+        
         self.item_features = dict(zip(item_features.item, item_features.values))
         self.user_features = dict(zip(user_features.user, user_features.values))
         
@@ -15,19 +27,39 @@ class InteractionsDataset(torch.utils.data.Dataset):
         self.n_users = len(user_features)
         self.n_items = len(item_features)
         
-        #Get ids 
+        self.interactions_pd_schema = dataframe_schema(interactions)
+        self.context_pd_schema = dataframe_schema(context_features)
+        self.item_pd_schema = dataframe_schema(item_features)
+        self.user_pd_schema = dataframe_schema(user_features)
+        
+        
+        #To do add custom target column
+        
     def __len__(self):
         return len(self.interactions)
 
     def __getitem__(self, idx):
         interaction = self.interactions[idx]
-        user_features = self.item_features[interaction[0]]
-        item_features = self.item_features[interaction[1]]
+        context_features = self.context_features[idx]
         
-        return interaction
+        user_features = self.item_features[interaction[0]]
+        item_features = self.user_features[interaction[1]]
+        
+        return interaction, context_features, user_features, item_features
     
+    @property
     def data_schema(self):
-        return {}
+        return {
+            "interactions": self.interactions_pd_schema,
+            "context": self.context_pd_schema,
+            "item": self.item_pd_schema,
+            "user": self.user_pd_schema,
+        }
+    
+    @staticmethod
+    def collate_fn(batch_output):
+        return batch_output
+        
 
     
     
