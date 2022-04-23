@@ -9,29 +9,37 @@ def dataframe_schema(df):
         r.append(col_schema)
         
     return r
+
 class InteractionsDataset(torch.utils.data.Dataset):
-    def __init__(self, interactions, item_features, user_features, sample_negatives=0, target_column=None):
-        interactions = interactions[interactions.columns[:2]]
-        context_features = interactions[interactions.columns[2:]]
+    def __init__(self, interactions, user_features,  item_features, sample_negatives=0, target_column=None):
+        
+        if not target_column:
+            interactions = interactions[interactions.columns[:2]]
+            context_features = interactions[interactions.columns[2:]]
+        else:
+            interactions = interactions[interactions.columns[:3]]
+            context_features = interactions[interactions.columns[3:]]
+            
         
         self.interactions = interactions.values #First two columns: userid, itemid
         self.context_features = context_features.values
         
-        self.item_features = dict(zip(item_features.item, item_features.values))
         self.user_features = dict(zip(user_features.user, user_features.values))
+        self.item_features = dict(zip(item_features.item, item_features.values))
         
         if target_column and sample_negatives:
             assert 1==0 #Error because logic wont work
             
         #Create a nice way of loading context + item features into a single dataset. Generate schema that models read from and are able to create 
-        self.n_users = len(user_features)
-        self.n_items = len(item_features)
+        self.n_users = user_features.user.max()
+        self.n_items = item_features.item.max()
         
         self.interactions_pd_schema = dataframe_schema(interactions)
         self.context_pd_schema = dataframe_schema(context_features)
         self.item_pd_schema = dataframe_schema(item_features)
         self.user_pd_schema = dataframe_schema(user_features)
         
+        self.target_column = target_column
         
         #To do add custom target column
         
@@ -42,18 +50,23 @@ class InteractionsDataset(torch.utils.data.Dataset):
         interaction = self.interactions[idx]
         context_features = self.context_features[idx]
         
-        user_features = self.item_features[interaction[0]]
-        item_features = self.user_features[interaction[1]]
+        user_features = self.user_features[interaction[0]]
+        item_features = self.item_features[interaction[1]]
         
         return interaction, context_features, user_features, item_features
+    
+    def __castdtypes(self, data):
+        """Ensure needed dtypes for the data_Schema"""
+        pass
     
     @property
     def data_schema(self):
         return {
-            "interactions": self.interactions_pd_schema,
+            "interactions": [self.n_users, self.n_items],
             "context": self.context_pd_schema,
-            "item": self.item_pd_schema,
-            "user": self.user_pd_schema,
+            "user_features": self.user_pd_schema,
+            "item_features": self.item_pd_schema,
+            "objetive": "notbinary?"
         }
     
     @staticmethod

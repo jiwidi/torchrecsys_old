@@ -11,13 +11,13 @@ class BaseModel(pl.LightningModule, ABC):
         raise NotImplementedError("`forward` method must be implemented by the user")
 
     def training_step(self, batch, batch_idx):
-        raise NotImplementedError("`forward` method must be implemented by the user")
+        raise NotImplementedError("`training_step` method must be implemented by the user")
         
     def validation_step(self, batch, batch_idx):
-        raise NotImplementedError("`forward` method must be implemented by the user")
+        raise NotImplementedError("`validation_step` method must be implemented by the user")
     
     def configure_optimizers(self):
-        raise NotImplementedError("`forward` method must be implemented by the user")
+        raise NotImplementedError("`configure_optimizers` method must be implemented by the user")
 
     def compile(self,):
         pass
