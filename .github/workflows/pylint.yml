@@ -8,7 +8,7 @@ jobs:
     steps:
        - uses: actions/checkout@v2
        - name: Python Linter
-         uses: jiwidi/python-lint-action@release
+         uses: jiwidi/python-lint-action@master
          with:
            source: "."
            isort-options: "-w 100"
