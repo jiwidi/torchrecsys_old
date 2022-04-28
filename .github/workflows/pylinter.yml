@@ -1,4 +1,4 @@
-name: Pylint black, autoflake, isort
+name: Pylint autoflake, isort, black
 
 on: [push]
 
