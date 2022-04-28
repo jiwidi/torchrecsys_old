@@ -21,7 +21,7 @@ jobs:
     - name: Run isort 
       if: always()
       run: |
-        isort --diff -c
+        isort . --diff -c
     - name: Run black 
       if: always()
       run: |
