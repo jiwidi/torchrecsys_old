@@ -22,6 +22,7 @@ jobs:
        output="$(autoflake . -r --remove-all-unused-imports)"
        if [[ -n $output ]]
        then
+        printf "$output"
         exit 1
        else
         exit 0
