@@ -17,7 +17,7 @@ jobs:
     - name: Run autoflake 
       if: always()
       run: | 
-       autoflake . -c --remove-all-unused-imports
+       autoflake . -r --remove-all-unused-imports
     - name: Run isort 
       if: always()
       run: |
