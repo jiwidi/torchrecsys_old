@@ -1,6 +1,12 @@
-name: Linting
+name: python_linting
 
-on: [push]
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
 
 jobs:
   build:
@@ -16,6 +22,7 @@ jobs:
         python -m pip install autoflake isort black
          
     ##Autoflake does not return code 1 when changes are needed so we capture the output to manually return code 1 if needed.
+    ##There is an option to run autoflake with -c to have such exit code but then no diff will be printed.
     - name: Run autoflake 
       if: always()
       run: | 
