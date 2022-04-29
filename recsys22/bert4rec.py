@@ -2,13 +2,14 @@ import math
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data as data
 import torchmetrics
-import pandas as pd
+
 
 class SublayerConnection(nn.Module):
     """
@@ -177,16 +178,23 @@ class BERTEmbedding(nn.Module):
         sum of all these features are output of BERTEmbedding
     """
 
-    def __init__(self, vocab_size, embed_size, max_len, token_embedding, dropout=0.1, ):
+    def __init__(
+        self,
+        vocab_size,
+        embed_size,
+        max_len,
+        token_embedding,
+        dropout=0.1,
+    ):
         """
         :param vocab_size: total vocab size
         :param embed_size: embedding size of token embedding
         :param dropout: dropout rate
         """
         super().__init__()
-#         self.token = nn.Embedding(
-#             vocab_size, embed_size, padding_idx=0
-#         )  # TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
+        #         self.token = nn.Embedding(
+        #             vocab_size, embed_size, padding_idx=0
+        #         )  # TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
         self.token = token_embedding
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
         self.dropout = nn.Dropout(p=dropout)
@@ -307,10 +315,10 @@ class BertDataset(data.Dataset):
         labels = []
         if self.mode == "train":
             seq = seq[:-1]  # Remove the latest one we will use for validation
-            
-            if self.rng.random()<0.25:
+
+            if self.rng.random() < 0.25:
                 np.random.shuffle(seq)
-                
+
             for s in seq:
                 prob = self.rng.random()
                 if prob < self.mask_prob:
@@ -341,7 +349,7 @@ class BertDataset(data.Dataset):
 
             tokens = [0] * mask_len + tokens
             labels = [0] * mask_len + labels
-            
+
             tokens = np.array([self.item_catalog[x] for x in tokens])
 
             return torch.LongTensor(tokens), torch.LongTensor(labels)
@@ -363,14 +371,13 @@ class BertDataset(data.Dataset):
             tokens = np.copy(seq).tolist()[-(self.max_len) :]
 
             tokens = [0] * mask_len + tokens + [self.mask_token]
-            tokens = tokens[-self.max_len:]
-            
+            tokens = tokens[-self.max_len :]
+
             tokens = np.array([self.item_catalog[x] for x in tokens])
-            
+
             session_id = self.session_ids[index]
-            
+
             return torch.LongTensor(tokens), torch.LongTensor(tokens), session_id
-            
 
 
 # COMMAND ----------
@@ -379,16 +386,22 @@ class featureEmbedder(torch.nn.Module):
         super().__init__()
         self.n_features = n_features
         for feature in range(self.n_features):
-            setattr(self,f'embedding_feature_{feature}', torch.nn.Embedding(embedding_size[feature], embedding_dimensions[feature]))
-            
-            
+            setattr(
+                self,
+                f"embedding_feature_{feature}",
+                torch.nn.Embedding(
+                    embedding_size[feature], embedding_dimensions[feature]
+                ),
+            )
+
     def forward(self, x):
         r = []
         for feature in range(self.n_features):
-            aux = getattr(self,f'embedding_feature_{feature}',0)(x[:,:,feature])
+            aux = getattr(self, f"embedding_feature_{feature}", 0)(x[:, :, feature])
             r.append(aux)
-            
+
         return torch.cat(r, dim=2)
+
 
 class RECBERTO(pl.LightningModule):
     """
@@ -414,7 +427,9 @@ class RECBERTO(pl.LightningModule):
             vocab_size=vocab_size,
             embed_size=hidden_units,
             max_len=max_len,
-            token_embedding = featureEmbedder(17, [30000]+[1028 for u in range(17)], [256]+[16 for u in range(17)]),
+            token_embedding=featureEmbedder(
+                17, [30000] + [1028 for u in range(17)], [256] + [16 for u in range(17)]
+            ),
             dropout=dropout,
         )
 
@@ -448,7 +463,7 @@ class RECBERTO(pl.LightningModule):
         pass
 
     def forward(self, x):
-        aux = x[:,:,0]
+        aux = x[:, :, 0]
         mask = (aux > 0).unsqueeze(1).repeat(1, aux.size(1), 1).unsqueeze(1)
 
         # embedding the indexed sequence to sequence of vectors
@@ -478,7 +493,7 @@ class RECBERTO(pl.LightningModule):
             logits = logits.softmax(1)
 
             acc = self.acc(logits, labels)
-            
+
             self.log(
                 "train/step_acc_top_14",
                 acc,
@@ -547,24 +562,24 @@ class RECBERTO(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         seqs, labels, sessionid = batch
         logits = self(seqs)  # B x T x V
-        top_indices = torch.topk(logits, 100).indices  # Top n_recos products for the user
+        top_indices = torch.topk(
+            logits, 100
+        ).indices  # Top n_recos products for the user
         return {"sessionid": sessionid, "top_indices": top_indices}
-    
-    
+
     def test_epoch_end(self, outputs):
         sessions = torch.cat([x["sessionid"] for x in outputs])
         y_hat = torch.cat([x["top_indices"] for x in outputs])
-        
+
         sessions = sessions.tolist()
         y_hat = y_hat.tolist()
 
         data = {"session_id": sessions, "item_id": y_hat}
         df = pd.DataFrame.from_dict(data)
         df["item_id"] = df.item_id.apply(lambda x: x[0])
-        df = df.explode('item_id')
-        df["rank"] = df.groupby(["session_id"]).cumcount()+1
+        df = df.explode("item_id")
+        df["rank"] = df.groupby(["session_id"]).cumcount() + 1
         df.to_csv("predict.csv", index=False)
-        
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)

@@ -1,11 +1,7 @@
 import torch
-import pytorch_lightning as pl
-from torchrecsys.datasets import InteractionsDataset
-from torchrecsys.models import BaseModel
-from abc import ABC, abstractmethod
-import numpy as np
-import torch
 from torch import nn
+
+from torchrecsys.models import BaseModel
 
 
 class NeuralCF(BaseModel):
@@ -58,7 +54,7 @@ class NeuralCF(BaseModel):
         user = self.user_embedding(interactions[:, 0].long())
         item = self.item_embedding(interactions[:, 1].long())
 
-        aux = self.encode_item(items)
+        self.encode_item(items)
         x = user * item
         x = self.linear(x)
         x = self.final_linear(x)
@@ -105,4 +101,3 @@ class NeuralCF(BaseModel):
         optimizer = torch.optim.AdamW(self.parameters(), self.lr_rate)
 
         return optimizer
-

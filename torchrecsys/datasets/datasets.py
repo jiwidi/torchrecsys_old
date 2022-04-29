@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-import numpy as np
 
 
 ##TODO
@@ -72,7 +71,6 @@ class InteractionsDataset(torch.utils.data.Dataset):
 
     def __castdtypes(self, data):
         """Ensure needed dtypes for the data_Schema"""
-        pass
 
     @property
     def data_schema(self):
