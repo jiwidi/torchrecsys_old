@@ -7,5 +7,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
        - uses: actions/checkout@v2
-       - name: Python Linter
+       - name: Python Linter 
          uses: jiwidi/python-lint-action@main
