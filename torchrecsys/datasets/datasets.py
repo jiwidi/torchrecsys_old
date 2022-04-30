@@ -1,19 +1,25 @@
+from typing import List
+
 import torch
 import torch.nn.functional as F
 
 
 ##TODO
 class feature:
-    name: str
-    dtype: str
-    unique_values: str
+    def __init__(self, name: str, dtype: str, unique_value_count: int) -> None:
+        self.name = name
+        self.dtype = dtype
+        self.unique_value_count = unique_value_count
+        self.layer_name = None
 
 
-def dataframe_schema(df):
+def dataframe_schema(df) -> List[feature]:
     r = []
     for col in df.columns.values:
-        col_schema = [df[col].dtype.name, len(df[col].unique())]
-        r.append(col_schema)
+        col_feature = feature(
+            name=col, dtype=df[col].dtype, unique_value_count=len(df[col].unique())
+        )
+        r.append(col_feature)
 
     return r
 

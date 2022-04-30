@@ -29,17 +29,20 @@ class NeuralCF(BaseModel):
         # User features encoding
 
         # Item features encoding
-        self.item_feature_types = []
+        self.item_features = []
         for feature_idx, feature in enumerate(data_schema["item_features"]):
-            feature_type, value_count = feature
-            if feature_type == "category":
+            if feature.dtype == "category":
                 layer_name = f"feature{feature_idx}_embedding"
+                feature.layer_name = layer_name
+                feature.idx = feature_idx
                 setattr(
                     self,
                     layer_name,
-                    nn.Embedding(value_count + 1, feature_embedding_size),
+                    nn.Embedding(
+                        feature.unique_value_count + 1, feature_embedding_size
+                    ),
                 )
-                self.item_feature_types.append([feature[0], layer_name, feature_idx])
+                self.item_features.append(feature)
 
         self.criterion = (
             torch.nn.BCEWithLogitsLoss()
@@ -66,10 +69,11 @@ class NeuralCF(BaseModel):
 
     def encode_item(self, items):
         r = []
-        for idx, feature in enumerate(self.item_feature_types):
-            feature_type, layer_name, feature_idx = feature
-            if feature_type == "category":
-                feature_embedding = getattr(self, layer_name)(items[:, feature_idx])
+        for idx, feature in enumerate(self.item_features):
+            if feature.dtype == "category":
+                feature_embedding = getattr(self, feature.layer_name)(
+                    items[:, feature.idx]
+                )
                 r.append(feature_embedding)
         r = torch.cat(r)
         return r
