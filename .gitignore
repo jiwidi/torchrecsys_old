@@ -3,7 +3,7 @@
 ##Repo specific
 data/
 ml-100k/
-predict*
+raw_files/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -160,3 +160,4 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+external_datasets/raw_files/ml-1m/README

@@ -30,37 +30,45 @@ class InteractionsDataset(torch.utils.data.Dataset):
         interactions,
         user_features,
         item_features,
+        user_id="user_id",
+        item_id="item_id",
+        interaction="interaction",
         sample_negatives=0,
         target_column=None,
     ):
 
-        if not target_column:
-            interactions = interactions[interactions.columns[:2]]
-            context_features = interactions[interactions.columns[2:]]
-        else:
-            interactions = interactions[interactions.columns[:3]]
-            context_features = interactions[interactions.columns[3:]]
+        self.user_id = user_id
+        self.item_id = item_id
+        self.interaction = interaction
 
-        self.interactions = interactions.values  # First two columns: userid, itemid
-        self.context_features = context_features.values
+        ##Check proper dataframe columns order
+        ## Call assert subfunction to chekc user is first, item second and interaction third
+        ## Assert in both user and item dfs too
 
-        self.user_features = dict(zip(user_features.user, user_features.values))
-        self.item_features = dict(zip(item_features.item, item_features.values))
+        self.interactions = interactions[interactions.columns[:3]]
+        self.context_features = interactions[interactions.columns[3:]]
+
+        self.user_features = dict(
+            zip(user_features[self.user_id], user_features.values)
+        )
+        self.item_features = dict(
+            zip(item_features[self.item_id], item_features.values)
+        )
 
         if target_column and sample_negatives:
             assert 1 == 0  # Error because logic wont work
 
         # Create a nice way of loading context + item features into a single dataset. Generate schema that models read from and are able to create
-        self.n_users = user_features.user.max()
-        self.n_items = item_features.item.max()
+        self.n_users = user_features[self.user_id].max()
+        self.n_items = item_features[self.item_id].max()
 
-        self.interactions_pd_schema = dataframe_schema(interactions)
-        self.context_pd_schema = dataframe_schema(context_features)
+        self.interactions_pd_schema = dataframe_schema(self.interactions)
+        self.context_pd_schema = dataframe_schema(self.context_features)
         self.item_pd_schema = dataframe_schema(item_features)
         self.user_pd_schema = dataframe_schema(user_features)
 
-        self.target_column = target_column
-
+        self.interactions = interactions.values
+        self.context_features = self.context_features.values
         # To do add custom target column
 
     def __len__(self):

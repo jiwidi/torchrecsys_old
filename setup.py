@@ -37,7 +37,7 @@ setup_info = dict(
     version=find_version("torchrecsys", "__init__.py"),
     author="Jaime Ferrando Huertas",
     author_email="fhjaime96@gmail.com",
-    description="Lightweight pytorch library to build recommender systems or information retrieval models.",
+    description="Lightweight pytorch library to build recommender systems.",
     python_requires=">=3.6",
     # Package info
     packages=find_packages(exclude=[".vscode", "build_tools", "docs", "tests"]),
