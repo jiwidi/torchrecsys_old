@@ -6,7 +6,7 @@ from torch import nn
 from torchrecsys.models.base import BaseModel, FeatureLayer
 
 
-class NeuralCF(BaseModel):
+class NCF(BaseModel):
     def __init__(
         self,
         data_schema,

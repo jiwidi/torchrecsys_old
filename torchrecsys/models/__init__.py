@@ -1,4 +1,5 @@
+from .als import ALS
 from .base import BaseModel
-from .neuralcf import NeuralCF
+from .ncf import NCF
 
-__all__ = ["BaseModel", "NeuralCF"]
+__all__ = ["BaseModel", "NCF", "ALS"]
