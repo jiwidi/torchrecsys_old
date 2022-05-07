@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from torchrecsys.models import BaseModel
+from torchrecsys.models import BaseModel, FeatureLayer
 
 
 class NeuralCF(BaseModel):
@@ -19,31 +19,47 @@ class NeuralCF(BaseModel):
         self.n_users = interactions_schema[0]
         self.n_items = interactions_schema[1]
 
-        self.user_embedding = nn.Embedding(self.n_users + 1, embedding_size)
-        self.item_embedding = nn.Embedding(self.n_items + 1, embedding_size)
-
-        self.linear = nn.Linear(embedding_size, layers[0])
-
-        self.final_linear = nn.Linear(layers[0], 1)
-
         # User features encoding
+        self.user_features = nn.ModuleList()
+        self.user_feature_dimension = 0
+        for feature_idx, feature in enumerate(data_schema["user_features"]):
+            if feature.dtype == "category":
+                layer_name = f"user_{feature.name}_embedding"
+                layer = nn.Embedding(
+                    feature.unique_value_count + 1, feature_embedding_size
+                )
+
+                f_layer = FeatureLayer(name=layer_name, layer=layer, idx=feature_idx)
+                self.user_features.append(f_layer)
+                self.user_feature_dimension += feature_embedding_size
 
         # Item features encoding
-        self.item_features = []
+        self.item_features = nn.ModuleList()
+        self.item_feature_dimension = 0
         for feature_idx, feature in enumerate(data_schema["item_features"]):
             if feature.dtype == "category":
-                layer_name = f"feature{feature_idx}_embedding"
-                feature.layer_name = layer_name
-                feature.idx = feature_idx
-                setattr(
-                    self,
-                    layer_name,
-                    nn.Embedding(
-                        feature.unique_value_count + 1, feature_embedding_size
-                    ),
+                layer_name = f"item_{feature.name}_embedding"
+                layer = nn.Embedding(
+                    feature.unique_value_count + 1, feature_embedding_size
                 )
-                self.item_features.append(feature)
 
+                f_layer = FeatureLayer(name=layer_name, layer=layer, idx=feature_idx)
+                self.item_features.append(f_layer)
+                self.item_feature_dimension += feature_embedding_size
+
+        aux_user_id_dimensions = self.user_feature_dimension + embedding_size
+        aux_item_id_dimensions = self.item_feature_dimension + embedding_size
+
+        max_dimension = max(aux_user_id_dimensions, aux_user_id_dimensions)
+        user_id_dimensions = embedding_size + (max_dimension - aux_user_id_dimensions)
+        item_id_dimensions = embedding_size + (max_dimension - aux_item_id_dimensions)
+
+        self.user_embedding = nn.Embedding(self.n_users + 1, user_id_dimensions)
+        self.item_embedding = nn.Embedding(self.n_items + 1, item_id_dimensions)
+
+        self.linear = nn.Linear(max_dimension, layers[0])
+        self.final_linear = nn.Linear(layers[0], 1)
+        self.activation = torch.nn.LeakyReLU()
         self.criterion = (
             torch.nn.BCEWithLogitsLoss()
             if data_schema["objetive"] == "binary"
@@ -57,25 +73,32 @@ class NeuralCF(BaseModel):
         user = self.user_embedding(interactions[:, 0].long())
         item = self.item_embedding(interactions[:, 1].long())
 
-        self.encode_item(items)
+        user_features = self.encode_user(users)
+        item_features = self.encode_item(items)
+
+        user = torch.cat([user, user_features], dim=1)
+        item = torch.cat([item, item_features], dim=1)
         x = user * item
         x = self.linear(x)
+        x = self.activation(x)
         x = self.final_linear(x)
 
         return x
 
     def encode_user(self, user):
-        return user
+        r = []
+        for idx, feature in enumerate(self.user_features):
+            feature_embedding = feature(user[:, feature.idx])
+            r.append(feature_embedding)
+        r = torch.cat(r, dim=1)
+        return r
 
-    def encode_item(self, items):
+    def encode_item(self, item):
         r = []
         for idx, feature in enumerate(self.item_features):
-            if feature.dtype == "category":
-                feature_embedding = getattr(self, feature.layer_name)(
-                    items[:, feature.idx]
-                )
-                r.append(feature_embedding)
-        r = torch.cat(r)
+            feature_embedding = feature(item[:, feature.idx])
+            r.append(feature_embedding)
+        r = torch.cat(r, dim=1)
         return r
 
     def training_step(self, batch):
