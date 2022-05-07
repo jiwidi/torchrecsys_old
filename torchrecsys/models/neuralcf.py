@@ -1,17 +1,19 @@
+from typing import List
+
 import torch
 from torch import nn
 
-from torchrecsys.models import BaseModel, FeatureLayer
+from torchrecsys.models.base import BaseModel, FeatureLayer
 
 
 class NeuralCF(BaseModel):
     def __init__(
         self,
         data_schema,
-        lr_rate=0.01,
-        embedding_size=64,
-        feature_embedding_size=8,
-        layers=[512],
+        lr_rate: float = 0.01,
+        embedding_size: int = 64,
+        feature_embedding_size: int = 8,
+        mlp_layers: List[int] = [512],
     ):
         super().__init__()
         interactions_schema = data_schema["interactions"]
@@ -22,6 +24,8 @@ class NeuralCF(BaseModel):
         # User features encoding
         self.user_features = nn.ModuleList()
         self.user_feature_dimension = 0
+
+        ##Make feature encoding a function and move it to base
         for feature_idx, feature in enumerate(data_schema["user_features"]):
             if feature.dtype == "category":
                 layer_name = f"user_{feature.name}_embedding"
@@ -57,9 +61,16 @@ class NeuralCF(BaseModel):
         self.user_embedding = nn.Embedding(self.n_users + 1, user_id_dimensions)
         self.item_embedding = nn.Embedding(self.n_items + 1, item_id_dimensions)
 
-        self.linear = nn.Linear(max_dimension, layers[0])
-        self.final_linear = nn.Linear(layers[0], 1)
-        self.activation = torch.nn.LeakyReLU()
+        mlp_layers = [max_dimension * 2] + mlp_layers
+        # Remember activation functions
+        self.mlp = torch.nn.Sequential(
+            *[
+                nn.Linear(mlp_layers[i], mlp_layers[i + 1])
+                for i in range(0, len(mlp_layers) - 1)
+            ]
+        )
+
+        self.final_linear = nn.Linear(mlp_layers[-1] + max_dimension, 1)
         self.criterion = (
             torch.nn.BCEWithLogitsLoss()
             if data_schema["objetive"] == "binary"
@@ -78,10 +89,11 @@ class NeuralCF(BaseModel):
 
         user = torch.cat([user, user_features], dim=1)
         item = torch.cat([item, item_features], dim=1)
-        x = user * item
-        x = self.linear(x)
-        x = self.activation(x)
-        x = self.final_linear(x)
+
+        mlp_output = self.mlp(torch.cat([user, item], dim=1))
+        gmf_output = user * item
+
+        x = self.final_linear(torch.cat([gmf_output, mlp_output], dim=1))
 
         return x
 
