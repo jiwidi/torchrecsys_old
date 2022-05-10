@@ -19,6 +19,7 @@ class NCF(BaseModel):
         super().__init__()
         interactions_schema = data_schema["interactions"]
 
+        # Ad 1 to the ids and use the latest id as default id for unseen, #TODO
         self.n_users = interactions_schema[0]
         self.n_items = interactions_schema[1]
 
@@ -77,8 +78,8 @@ class NCF(BaseModel):
         user_id_dimensions = embedding_size + (max_dimension - aux_user_id_dimensions)
         item_id_dimensions = embedding_size + (max_dimension - aux_item_id_dimensions)
 
-        self.user_embedding = nn.Embedding(self.n_users + 1, user_id_dimensions)
-        self.item_embedding = nn.Embedding(self.n_items + 1, item_id_dimensions)
+        self.user_embedding = nn.Embedding(self.n_users, user_id_dimensions)
+        self.item_embedding = nn.Embedding(self.n_items, item_id_dimensions)
 
         mlp_layers = [max_dimension * 2] + mlp_layers
         # Remember activation functions

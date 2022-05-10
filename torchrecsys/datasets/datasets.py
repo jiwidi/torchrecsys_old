@@ -40,8 +40,8 @@ class InteractionsDataset(torch.utils.data.Dataset):
             assert 1 == 0  # Error because logic wont work
 
         # Create a nice way of loading context + item features into a single dataset. Generate schema that models read from and are able to create
-        self.n_users = user_features[self.user_id].max()
-        self.n_items = item_features[self.item_id].max()
+        self.n_users = user_features[self.user_id].max() + 1
+        self.n_items = item_features[self.item_id].max() + 1
 
         self.interactions_pd_schema = dataframe_schema(self.interactions)
         self.context_pd_schema = dataframe_schema(self.context_features)

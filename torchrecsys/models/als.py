@@ -139,4 +139,4 @@ class ALS(BaseModel):
         ##Need to figure out how to do the custom loss steps, when i get internet
         item_optimizer = torch.optim.SGD(user_weights, self.lr_rate)
         user_optimizer = torch.optim.SGD(item_weights, self.lr_rate)
-        return optimizer
+        return [item_optimizer, user_optimizer]
