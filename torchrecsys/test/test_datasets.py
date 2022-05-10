@@ -9,9 +9,9 @@ from torchrecsys.test.fixtures import (  # NOQA
 
 
 def test_interactions_dataset(dummy_interaction_dataset):
-    item = dummy_interaction_dataset[0]
+    dummy_interaction_dataset[0]
     dataloader = DataLoader(dummy_interaction_dataset)
-    item = next(iter(dataloader))
+    next(iter(dataloader))
 
 
 def test_sequence_dataset(dummy_interaction_dataset):

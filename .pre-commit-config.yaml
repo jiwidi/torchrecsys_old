@@ -4,7 +4,7 @@ repos:
     hooks:
       - id: autoflake
         name: autoflake (python)
-        args: [--in-place, --remove-all-unused-imports, --recursive]
+        args: [--in-place, --remove-all-unused-imports, --expand-star-imports , --remove-unused-variables, --recursive]
   - repo: https://github.com/pycqa/isort
     rev: 5.10.1
     hooks:
