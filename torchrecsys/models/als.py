@@ -1,9 +1,8 @@
-from typing import List
-
 import torch
 from torch import nn
 
-from torchrecsys.models.base import BaseModel, FeatureLayer
+from torchrecsys.layers.features import FeatureLayer
+from torchrecsys.models.base import BaseModel
 
 
 class ALS(BaseModel):

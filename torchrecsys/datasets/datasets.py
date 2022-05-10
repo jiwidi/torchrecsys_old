@@ -12,14 +12,14 @@ class InteractionsDataset(torch.utils.data.Dataset):
         item_features,
         user_id="user_id",
         item_id="item_id",
-        interaction="interaction",
+        interaction_id="interaction",
         sample_negatives=0,
         target_column=None,
     ):
 
         self.user_id = user_id
         self.item_id = item_id
-        self.interaction = interaction
+        self.interaction_id = interaction_id
 
         ##Check proper dataframe columns order
         ## Call assert subfunction to chekc user is first, item second and interaction third
@@ -29,10 +29,11 @@ class InteractionsDataset(torch.utils.data.Dataset):
         self.context_features = interactions[interactions.columns[3:]]
 
         self.user_features = dict(
-            zip(user_features[self.user_id], user_features.values)
+            # Eliminate user_id feature that is first on the matrix
+            zip(user_features[self.user_id], user_features.values[:, 1:])
         )
         self.item_features = dict(
-            zip(item_features[self.item_id], item_features.values)
+            zip(item_features[self.item_id], item_features.values[:, 1:])
         )
 
         if target_column and sample_negatives:
@@ -44,8 +45,13 @@ class InteractionsDataset(torch.utils.data.Dataset):
 
         self.interactions_pd_schema = dataframe_schema(self.interactions)
         self.context_pd_schema = dataframe_schema(self.context_features)
-        self.item_pd_schema = dataframe_schema(item_features)
-        self.user_pd_schema = dataframe_schema(user_features)
+        self.user_pd_schema = dataframe_schema(user_features.drop(self.user_id, axis=1))
+        self.item_pd_schema = dataframe_schema(item_features.drop(self.item_id, axis=1))
+
+        if self.interactions[self.interaction_id].isin([0, 1]).all():
+            self.target_type = "binary"
+        else:
+            self.target_type = "continuous"
 
         self.interactions = interactions.values
         self.context_features = self.context_features.values
@@ -73,7 +79,7 @@ class InteractionsDataset(torch.utils.data.Dataset):
             "context": self.context_pd_schema,
             "user_features": self.user_pd_schema,
             "item_features": self.item_pd_schema,
-            "objetive": "notbinary?",
+            "objetive": self.target_type,
         }
 
     @staticmethod

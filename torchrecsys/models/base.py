@@ -1,18 +1,6 @@
 from abc import ABC, abstractmethod
 
 import pytorch_lightning as pl
-import torch
-
-
-class FeatureLayer(torch.nn.Module):
-    def __init__(self, name: str, layer: torch.nn.Module, idx: int) -> None:
-        super().__init__()
-        self.name = name
-        self.layer = layer
-        self.idx = idx
-
-    def forward(self, x):
-        return self.layer(x)
 
 
 class BaseModel(pl.LightningModule, ABC):

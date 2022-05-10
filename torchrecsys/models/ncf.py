@@ -3,7 +3,8 @@ from typing import List
 import torch
 from torch import nn
 
-from torchrecsys.models.base import BaseModel, FeatureLayer
+from torchrecsys.layers import CategoricalLayer, NumericalLayer
+from torchrecsys.models.base import BaseModel
 
 
 class NCF(BaseModel):
@@ -13,7 +14,7 @@ class NCF(BaseModel):
         lr_rate: float = 0.01,
         embedding_size: int = 64,
         feature_embedding_size: int = 8,
-        mlp_layers: List[int] = [512],
+        mlp_layers: List[int] = [512, 256],
     ):
         super().__init__()
         interactions_schema = data_schema["interactions"]
@@ -29,13 +30,22 @@ class NCF(BaseModel):
         for feature_idx, feature in enumerate(data_schema["user_features"]):
             if feature.dtype == "category":
                 layer_name = f"user_{feature.name}_embedding"
-                layer = nn.Embedding(
-                    feature.unique_value_count + 1, feature_embedding_size
+                f_layer = CategoricalLayer(
+                    name=layer_name,
+                    n_unique_values=feature.unique_value_count,
+                    dimensions=feature_embedding_size,
+                    idx=feature_idx,
                 )
-
-                f_layer = FeatureLayer(name=layer_name, layer=layer, idx=feature_idx)
                 self.user_features.append(f_layer)
                 self.user_feature_dimension += feature_embedding_size
+            elif feature.dtype == "int64":
+                layer_name = f"user_{feature.name}_numerical"
+                f_layer = NumericalLayer(
+                    name=layer_name,
+                    idx=feature_idx,
+                )
+                self.user_features.append(f_layer)
+                self.user_feature_dimension += 1
 
         # Item features encoding
         self.item_features = nn.ModuleList()
@@ -43,13 +53,22 @@ class NCF(BaseModel):
         for feature_idx, feature in enumerate(data_schema["item_features"]):
             if feature.dtype == "category":
                 layer_name = f"item_{feature.name}_embedding"
-                layer = nn.Embedding(
-                    feature.unique_value_count + 1, feature_embedding_size
+                f_layer = CategoricalLayer(
+                    name=layer_name,
+                    n_unique_values=feature.unique_value_count,
+                    dimensions=feature_embedding_size,
+                    idx=feature_idx,
                 )
-
-                f_layer = FeatureLayer(name=layer_name, layer=layer, idx=feature_idx)
                 self.item_features.append(f_layer)
                 self.item_feature_dimension += feature_embedding_size
+            elif feature.dtype == "int64":
+                layer_name = f"item_{feature.name}_numerical"
+                f_layer = NumericalLayer(
+                    name=layer_name,
+                    idx=feature_idx,
+                )
+                self.item_features.append(f_layer)
+                self.item_feature_dimension += 1
 
         aux_user_id_dimensions = self.user_feature_dimension + embedding_size
         aux_item_id_dimensions = self.item_feature_dimension + embedding_size
@@ -81,8 +100,8 @@ class NCF(BaseModel):
 
     def forward(self, interactions, context, users, items):
 
-        user = self.user_embedding(interactions[:, 0].long())
-        item = self.item_embedding(interactions[:, 1].long())
+        user = self.user_embedding(interactions[:, 0])
+        item = self.item_embedding(interactions[:, 1])
 
         user_features = self.encode_user(users)
         item_features = self.encode_item(items)
@@ -97,24 +116,33 @@ class NCF(BaseModel):
 
         return x
 
+    def predict(self, pair, context_features, user_features, item_features):
+        pair = torch.tensor([pair])
+
+        user_features = torch.tensor([user_features])
+        item_features = torch.tensor([item_features])
+
+        return self(pair, context_features, user_features, item_features)
+
     def encode_user(self, user):
         r = []
         for idx, feature in enumerate(self.user_features):
-            feature_embedding = feature(user[:, feature.idx])
-            r.append(feature_embedding)
-        r = torch.cat(r, dim=1)
+            feature_representation = feature(user[:, feature.idx])
+            r.append(feature_representation)
+        r = torch.cat(r, dim=1)  # Concatenate all features
         return r
 
     def encode_item(self, item):
         r = []
         for idx, feature in enumerate(self.item_features):
-            feature_embedding = feature(item[:, feature.idx])
-            r.append(feature_embedding)
-        r = torch.cat(r, dim=1)
+            feature_representation = feature(item[:, feature.idx])
+            r.append(feature_representation)
+        r = torch.cat(r, dim=1)  # Concatenate all features
         return r
 
     def training_step(self, batch):
-        yhat = self(*batch).float()
+        interactions, context, users, items = batch
+        yhat = self(interactions.long(), context, users, items).float()
         yhat = torch.squeeze(yhat)
 
         ytrue = batch[0][:, 2].float()
