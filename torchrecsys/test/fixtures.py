@@ -1,17 +1,29 @@
 # Arrange
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
+
 from torchrecsys.datasets import InteractionsDataset
 
 
 @pytest.fixture
 def dummy_interactions():
     interactions = np.array(
-        [[1, 1, 5], [1, 2, 3], [1, 3, 3], [2, 2, 4], [2, 3, 5], [2, 4, 4], [2, 5, 5],],
+        [
+            [1, 1, 5],
+            [1, 2, 3],
+            [1, 3, 3],
+            [2, 2, 4],
+            [2, 3, 5],
+            [2, 4, 4],
+            [2, 5, 5],
+        ],
         dtype=int,
     )
-    interactions = pd.DataFrame(interactions, columns=["user_id", "item_id", "rating"],)
+    interactions = pd.DataFrame(
+        interactions,
+        columns=["user_id", "item_id", "rating"],
+    )
     return interactions
 
 

@@ -1,12 +1,11 @@
-from torchrecsys.datasets import InteractionsDataset
-from torchrecsys.models import NCF
-from torchrecsys.test.fixtures import (
+from torch.utils.data import DataLoader
+
+from torchrecsys.test.fixtures import (  # NOQA
     dummy_interaction_dataset,
     dummy_interactions,
     dummy_item_features,
     dummy_user_features,
-)  # NOQA
-from torch.utils.data import DataLoader
+)
 
 
 def test_interactions_dataset(dummy_interaction_dataset):
@@ -17,4 +16,3 @@ def test_interactions_dataset(dummy_interaction_dataset):
 
 def test_sequence_dataset(dummy_interaction_dataset):
     pass
-
