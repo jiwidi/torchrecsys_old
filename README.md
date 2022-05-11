@@ -6,15 +6,10 @@
 
 #Interaction based
 
-NeuralCF
-DLRM
-Wide&Deep
+Models I want to implement before v1
+Tower based: NCF, DLRM, Widedeep
 
-Sequence
-gru4rec
-bert4rec
-BST alibaba
-one i dont remember name now need to look it up
+Sequence: gru4rec, bert4rec, bst, STAMP
 
 
 
