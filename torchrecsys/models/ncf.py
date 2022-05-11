@@ -99,6 +99,9 @@ class NCF(BaseModel):
 
         self.lr_rate = lr_rate
 
+        # Save hyperparameters for logging
+        self.save_hyperparameters()
+
     def forward(self, interactions, context, users, items):
 
         user = self.user_embedding(interactions[:, 0])

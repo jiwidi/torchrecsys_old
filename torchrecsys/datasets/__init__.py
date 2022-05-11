@@ -1,3 +1,3 @@
-from .datasets import InteractionsDataset, SequenceDataset
+from .datasets import InteractionsDataset, Seq2SeqDataset
 
-__all__ = ["InteractionsDataset", "SequenceDataset"]
+__all__ = ["InteractionsDataset", "Seq2SeqDataset"]
