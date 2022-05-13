@@ -2,6 +2,7 @@ import pytorch_lightning as pl
 import torch
 from torch import nn
 
+from torchrecsys.layers import CategoricalLayer, NumericalLayer
 from torchrecsys.models.bert_utils import BERTEmbedding, TransformerBlock
 
 
@@ -17,6 +18,7 @@ class Bert4Rec(pl.LightningModule):
         heads=4,
         hidden_units=512,
         dropout=0.1,
+        feature_embedding_size=8,
         n_attention_layers=3,
         training_metrics=False,
         learning_rate=3e-5,
@@ -33,10 +35,33 @@ class Bert4Rec(pl.LightningModule):
         self.learning_rate = learning_rate
         self.num_rec = num_rec
 
+        # Item features encoding
+        self.item_features = nn.ModuleList()
+        self.item_feature_dimension = 0
+        for feature_idx, feature in enumerate(data_schema["item_features"]):
+            if feature.dtype == "category":
+                layer_name = f"item_{feature.name}_embedding"
+                f_layer = CategoricalLayer(
+                    name=layer_name,
+                    n_unique_values=feature.unique_value_count,
+                    dimensions=feature_embedding_size,
+                    idx=feature_idx,
+                )
+                self.item_features.append(f_layer)
+                self.item_feature_dimension += feature_embedding_size
+            elif feature.dtype == "int64":
+                layer_name = f"item_{feature.name}_numerical"
+                f_layer = NumericalLayer(
+                    name=layer_name,
+                    idx=feature_idx,
+                )
+                self.item_features.append(f_layer)
+                self.item_feature_dimension += 1
+
         # embedding for BERT, sum of positional, segment, token embeddings
         self.embedding = BERTEmbedding(
             vocab_size=vocab_size,
-            embed_size=hidden_units,
+            embed_size=hidden_units - self.item_feature_dimension,
             max_length=max_length,
             dropout=dropout,
         )
@@ -74,17 +99,19 @@ class Bert4Rec(pl.LightningModule):
         # To implement
         pass
 
-    def forward(self, x):
+    def forward(self, sequence, items):
         mask = (
-            (x != self.index_pad_token)
+            (sequence != self.index_pad_token)
             .unsqueeze(1)
-            .repeat(1, x.size(1), 1)
+            .repeat(1, sequence.size(1), 1)
             .unsqueeze(1)
         )
 
         # embedding the indexed sequence to sequence of vectors
-        x = self.embedding(x)
+        x = self.embedding(sequence)
 
+        items = self.encode_item(items)
+        x = torch.cat([x, items], dim=2)
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
             x = transformer.forward(x, mask)
@@ -93,10 +120,18 @@ class Bert4Rec(pl.LightningModule):
 
         return x
 
-    def training_step(self, batch, batch_idx):
-        seqs, labels = batch
+    def encode_item(self, user):
+        r = []
+        for idx, feature in enumerate(self.item_features):
+            feature_representation = feature(user[:, :, feature.idx])
+            r.append(feature_representation)
+        r = torch.cat(r, dim=2)  # Concatenate all features
+        return r
 
-        logits = self(seqs)  # B x T x V
+    def training_step(self, batch, batch_idx):
+        seqs, labels, items = batch
+
+        logits = self(seqs, items)  # B x T x V
 
         logits = logits.view(-1, logits.size(-1))  # (B*T) x V
         labels = labels.view(-1)  # B*T
@@ -137,8 +172,9 @@ class Bert4Rec(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        seqs, labels = batch
-        logits = self(seqs)  # B x T x V
+        seqs, labels, items = batch
+
+        logits = self(seqs, items)  # B x T x V
 
         loss = self.criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
 

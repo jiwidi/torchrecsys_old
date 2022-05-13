@@ -1,16 +1,12 @@
+from dataclasses import dataclass
 from typing import List
 
 
-##TODO
+@dataclass
 class feature:
-    def __init__(self, name: str, dtype: str, unique_value_count: int) -> None:
-        self.name = name
-        self.dtype = dtype
-        self.unique_value_count = unique_value_count
-        self.layer_name = None
-
-    def __str__(self):
-        return f"Featue [Name: {self.name}, dtype: {self.dtype}, unique_value_count: {self.unique_value_count}]"
+    name: str
+    dtype: str
+    unique_value_count: int
 
 
 def dataframe_schema(df) -> List[feature]:

@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import numpy as np
 import pandas as pd
 import torch
@@ -36,7 +38,9 @@ class InteractionsDataset(torch.utils.data.Dataset):
             zip(user_features[self.user_id], user_features.values[:, 1:])
         )
         self.item_features = dict(
-            zip(item_features[self.item_id], item_features.values[:, 1:])
+            zip(
+                item_features[self.item_id], item_features.values[:, 1:]
+            )  # Change this to drop by item name
         )
 
         if target_column and sample_negatives:
@@ -119,7 +123,17 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
         self.context_features = sequences.loc[:, sequences.columns != sequence_id]
 
         self.item_features = dict(
-            zip(item_features[self.item_id], item_features.values[:, 1:])
+            zip(
+                item_features[self.item_id],
+                item_features.drop(self.item_id, axis=1).values,
+            )
+        )
+
+        self.item_features = defaultdict(
+            lambda: np.array(
+                [0 for feature in item_features.drop(self.item_id, axis=1)]
+            ),
+            self.item_features,
         )
 
         # Create a nice way of loading context + item features into a single dataset. Generate schema that models read from and are able to create
@@ -181,14 +195,14 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
 
             tokens = [self.pad_token] * mask_len + tokens
             labels = [self.pad_token] * mask_len + labels
-            try:
-                return (
-                    torch.LongTensor(tokens),
-                    torch.LongTensor(labels),
-                )
-            except:
-                print(index, tokens, labels)
-                sys.exit(0)
+
+            features = [self.item_features[item_id] for item_id in tokens]
+
+            return (
+                torch.LongTensor(tokens),
+                torch.LongTensor(labels),
+                torch.LongTensor(features),
+            )
 
         elif self.mode == "validate":
             mask_len = self.max_length - len(seq)
@@ -199,9 +213,12 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
             tokens = [self.pad_token] * mask_len + tokens[:-1] + [self.mask_token]
             labels = [self.pad_token] * mask_len + labels
 
+            features = [self.item_features[item_id] for item_id in tokens]
+
             return (
                 torch.LongTensor(self.vocab(tokens)),
                 torch.LongTensor(self.vocab(labels)),
+                torch.LongTensor(features),
             )
 
         elif (

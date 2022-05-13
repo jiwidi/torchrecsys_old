@@ -13,5 +13,6 @@ Sequence: gru4rec, bert4rec, bst, STAMP
 
 
 
-
+# Testing
+To run the library test run `pytest` from the main directory
 
