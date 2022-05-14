@@ -24,29 +24,39 @@ class InteractionsDataset(torch.utils.data.Dataset):
         self.item_id = item_id
         self.interaction_id = interaction_id
 
-        ##Check proper dataframe columns order
-        ## Call assert subfunction to chekc user is first, item second and interaction third
-        ## Assert in both user and item dfs too
+        # Check proper dataframe columns order
+        # Call assert subfunction to chekc user is first, item second and interaction third
+        # Assert in both user and item dfs too
 
         self.interactions = interactions[interactions.columns[:3]]
 
-        # Infer context dataframe from interactions dataframe and user/item ids.
+        # Infer context dataframe from interactions dataframe and user/item
+        # ids.
         self.context_features = interactions[interactions.columns[3:]]
 
         self.user_features = dict(
             # Eliminate user_id feature that is first on the matrix
             zip(user_features[self.user_id], user_features.values[:, 1:])
         )
+        self.user_features = dict(
+            # Eliminate user_id feature that is first on the matrix
+            zip(
+                user_features[self.user_id],
+                user_features.drop(self.user_id, axis=1).to_numpy(dtype=int),
+            )
+        )
         self.item_features = dict(
             zip(
-                item_features[self.item_id], item_features.values[:, 1:]
-            )  # Change this to drop by item name
+                item_features[self.item_id],
+                item_features.drop(self.item_id, axis=1).to_numpy(dtype=int),
+            )
         )
 
         if target_column and sample_negatives:
             assert 1 == 0  # Error because logic wont work
 
-        # Create a nice way of loading context + item features into a single dataset. Generate schema that models read from and are able to create
+        # Create a nice way of loading context + item features into a single
+        # dataset. Generate schema that models read from and are able to create
         self.n_users = user_features[self.user_id].max() + 1
         self.n_items = item_features[self.item_id].max() + 1
 
@@ -106,7 +116,7 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
         max_length: int = 20,
         mask_token: int = 1,
         pad_token: int = 0,
-        mask_prob: int = 0.15,
+        mask_prob: float = 0.15,
         random_seq_start: bool = False,
     ):
         self.max_item_id = max_item_id
@@ -136,7 +146,8 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
             self.item_features,
         )
 
-        # Create a nice way of loading context + item features into a single dataset. Generate schema that models read from and are able to create
+        # Create a nice way of loading context + item features into a single
+        # dataset. Generate schema that models read from and are able to create
         self.n_items = item_features[self.item_id].max() + 1
 
         # Add context
@@ -152,7 +163,6 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
     def _maskSequence(
         self,
         sequence,
-        mask_probability: int = 0.15,
     ):
         """Masks a sequence according to the masking parameters"""
         tokens = []
@@ -186,7 +196,7 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
             # randomize the sequene within the full sequence, only if
             # max_length<len(tokens)
             else:
-                idx = np.random.randint(self.max_length, len(tokens))
+                idx = np.random.randint(self.max_length, len(seq))
                 seq = seq[:idx][-self.max_length :]
 
             mask_len = self.max_length - len(seq)
@@ -224,19 +234,20 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
         elif (
             self.mode == "inference"
         ):  # Prediction data requires user column. TODO: exception if no user data?
-            tokens = np.copy(seq).tolist()
-            if self.max_length == len(seq):
-                tokens = tokens[1:]
-            elif len(seq) > self.max_length:
-                error_msg = f"sequence length {len(seq)} was longer than expected {self.max_length}"
-                raise ValueError(error_msg)
-            else:
-                pad_len = self.max_length - len(seq) - 1
-                tokens = [self.mask_token] * pad_len + tokens
-            tokens += [self.mask_token]
-            user = self.user_data[index]
+            # tokens = np.copy(seq).tolist()
+            # if self.max_length == len(seq):
+            #     tokens = tokens[1:]
+            # elif len(seq) > self.max_length:
+            #     error_msg = f"sequence length {len(seq)} was longer than expected {self.max_length}"
+            #     raise ValueError(error_msg)
+            # else:
+            #     pad_len = self.max_length - len(seq) - 1
+            #     tokens = [self.mask_token] * pad_len + tokens
+            # tokens += [self.mask_token]
+            # user = self.user_data[index]
 
-            return torch.LongTensor(self.vocab(tokens)), user
+            # return torch.LongTensor(self.vocab(tokens)), user
+            pass
 
     @property
     def data_schema(self):

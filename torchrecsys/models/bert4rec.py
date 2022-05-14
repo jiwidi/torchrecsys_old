@@ -122,7 +122,7 @@ class Bert4Rec(pl.LightningModule):
 
     def encode_item(self, user):
         r = []
-        for idx, feature in enumerate(self.item_features):
+        for _idx, feature in enumerate(self.item_features):
             feature_representation = feature(user[:, :, feature.idx])
             r.append(feature_representation)
         r = torch.cat(r, dim=2)  # Concatenate all features
@@ -225,7 +225,8 @@ class Bert4Rec(pl.LightningModule):
         logits = logits[:, -1, :]
         logits = logits.softmax(1)
 
-        topk = torch.topk(logits, self.num_rec).indices  # Top K products for the user
+        # Top K products for the user
+        topk = torch.topk(logits, self.num_rec).indices
 
         return users, topk
 

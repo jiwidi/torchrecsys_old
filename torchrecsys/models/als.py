@@ -23,7 +23,7 @@ class ALS(BaseModel):
         self.user_features = nn.ModuleList()
         self.user_feature_dimension = 0
 
-        ##Make feature encoding a function and move it to base
+        # Make feature encoding a function and move it to base
         for feature_idx, feature in enumerate(data_schema["user_features"]):
             if feature.dtype == "category":
                 layer_name = f"user_{feature.name}_embedding"
@@ -87,7 +87,7 @@ class ALS(BaseModel):
 
     def encode_user(self, user):
         r = []
-        for idx, feature in enumerate(self.user_features):
+        for _idx, feature in enumerate(self.user_features):
             feature_embedding = feature(user[:, feature.idx])
             r.append(feature_embedding)
         r = torch.cat(r, dim=1)
@@ -95,7 +95,7 @@ class ALS(BaseModel):
 
     def encode_item(self, item):
         r = []
-        for idx, feature in enumerate(self.item_features):
+        for _idx, feature in enumerate(self.item_features):
             feature_embedding = feature(item[:, feature.idx])
             r.append(feature_embedding)
         r = torch.cat(r, dim=1)
@@ -136,7 +136,8 @@ class ALS(BaseModel):
             self.item_biases.weight,
         ]
 
-        ##Need to figure out how to do the custom loss steps, when i get internet
+        # Need to figure out how to do the custom loss steps, when i get
+        # internet
         item_optimizer = torch.optim.SGD(user_weights, self.lr_rate)
         user_optimizer = torch.optim.SGD(item_weights, self.lr_rate)
         return [item_optimizer, user_optimizer]

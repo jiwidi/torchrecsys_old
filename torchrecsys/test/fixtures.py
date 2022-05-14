@@ -51,7 +51,7 @@ def dummy_user_features():
     users["gender"], uniques = pd.factorize(users["gender"])
     users["occupation"], uniques = pd.factorize(users["occupation"])
     users["zip"], uniques = pd.factorize(users["zip"])
-    ##Set category dtype
+    # Set category dtype
     users["gender"] = users.gender.astype("category")
     users["occupation"] = users.occupation.astype("category")
     users["zip"] = users.zip.astype("category")
@@ -73,10 +73,10 @@ def dummy_item_features():
     items = pd.DataFrame(items, columns=["item_id", "title", "genres"])
     # Preprocess items,
     items["item_id"] = pd.to_numeric(items["item_id"])
-    ##categories to index
+    # categories to index
     items["title"], uniques = pd.factorize(items["title"])
     items["genres"], uniques = pd.factorize(items["genres"])
-    ##Set category dtype
+    # Set category dtype
     items["title"] = items.title.astype("category")
     items["genres"] = items.genres.astype("category")
 
