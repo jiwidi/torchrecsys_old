@@ -3,8 +3,8 @@ from typing import List
 import torch
 from torch import nn
 
-from torchrecsys.layers import CategoricalLayer, NumericalLayer
 from torchrecsys.models.base import BaseModel
+from torchrecsys.models.utils import schema_to_featureModuleList
 
 
 class NCF(BaseModel):
@@ -23,54 +23,14 @@ class NCF(BaseModel):
         self.n_users = interactions_schema[0]
         self.n_items = interactions_schema[1]
 
-        # User features encoding
-        self.user_features = nn.ModuleList()
-        self.user_feature_dimension = 0
-
-        # Make feature encoding a function and move it to base
-        for feature_idx, feature in enumerate(data_schema["user_features"]):
-            if feature.dtype == "category":
-                layer_name = f"user_{feature.name}_embedding"
-                f_layer = CategoricalLayer(
-                    name=layer_name,
-                    n_unique_values=feature.unique_value_count,
-                    dimensions=feature_embedding_size,
-                    idx=feature_idx,
-                )
-                self.user_features.append(f_layer)
-                self.user_feature_dimension += feature_embedding_size
-            elif feature.dtype == "int64":
-                layer_name = f"user_{feature.name}_numerical"
-                f_layer = NumericalLayer(
-                    name=layer_name,
-                    idx=feature_idx,
-                )
-                self.user_features.append(f_layer)
-                self.user_feature_dimension += 1
+        self.user_features, self.user_feature_dimension = schema_to_featureModuleList(
+            data_schema["user_features"], feature_embedding_size
+        )
 
         # Item features encoding
-        self.item_features = nn.ModuleList()
-        self.item_feature_dimension = 0
-        for feature_idx, feature in enumerate(data_schema["item_features"]):
-            if feature.dtype == "category":
-                layer_name = f"item_{feature.name}_embedding"
-                f_layer = CategoricalLayer(
-                    name=layer_name,
-                    n_unique_values=feature.unique_value_count,
-                    dimensions=feature_embedding_size,
-                    idx=feature_idx,
-                )
-                self.item_features.append(f_layer)
-                self.item_feature_dimension += feature_embedding_size
-            elif feature.dtype == "int64":
-                layer_name = f"item_{feature.name}_numerical"
-                f_layer = NumericalLayer(
-                    name=layer_name,
-                    idx=feature_idx,
-                )
-                self.item_features.append(f_layer)
-                self.item_feature_dimension += 1
-
+        self.item_features, self.item_feature_dimension = schema_to_featureModuleList(
+            data_schema["item_features"], feature_embedding_size
+        )
         aux_user_id_dimensions = self.user_feature_dimension + embedding_size
         aux_item_id_dimensions = self.item_feature_dimension + embedding_size
 
