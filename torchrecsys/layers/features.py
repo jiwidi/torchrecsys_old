@@ -26,6 +26,10 @@ class CategoricalLayer(torch.nn.Module):
     def forward(self, x):
         return self.layer(x)
 
+    @property
+    def weight(self):
+        return self.layer.weight
+
 
 class NumericalLayer(torch.nn.Module):
     def __init__(self, name: str, idx: int) -> None:

@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from torchrecsys.layers.features import FeatureLayer
+from torchrecsys.layers import CategoricalLayer, NumericalLayer
 from torchrecsys.models.base import BaseModel
 
 
@@ -14,6 +14,9 @@ class ALS(BaseModel):
         feature_embedding_size: int = 8,
     ):
         super().__init__()
+        # We will handle optimization for ALS and not PL.
+        self.automatic_optimization = False
+
         interactions_schema = data_schema["interactions"]
 
         self.n_users = interactions_schema[0]
@@ -27,13 +30,22 @@ class ALS(BaseModel):
         for feature_idx, feature in enumerate(data_schema["user_features"]):
             if feature.dtype == "category":
                 layer_name = f"user_{feature.name}_embedding"
-                layer = nn.Embedding(
-                    feature.unique_value_count + 1, feature_embedding_size
+                f_layer = CategoricalLayer(
+                    name=layer_name,
+                    n_unique_values=feature.unique_value_count,
+                    dimensions=feature_embedding_size,
+                    idx=feature_idx,
                 )
-
-                f_layer = FeatureLayer(name=layer_name, layer=layer, idx=feature_idx)
                 self.user_features.append(f_layer)
                 self.user_feature_dimension += feature_embedding_size
+            elif feature.dtype == "int64":
+                layer_name = f"user_{feature.name}_numerical"
+                f_layer = NumericalLayer(
+                    name=layer_name,
+                    idx=feature_idx,
+                )
+                self.user_features.append(f_layer)
+                self.user_feature_dimension += 1
 
         # Item features encoding
         self.item_features = nn.ModuleList()
@@ -41,13 +53,22 @@ class ALS(BaseModel):
         for feature_idx, feature in enumerate(data_schema["item_features"]):
             if feature.dtype == "category":
                 layer_name = f"item_{feature.name}_embedding"
-                layer = nn.Embedding(
-                    feature.unique_value_count + 1, feature_embedding_size
+                f_layer = CategoricalLayer(
+                    name=layer_name,
+                    n_unique_values=feature.unique_value_count,
+                    dimensions=feature_embedding_size,
+                    idx=feature_idx,
                 )
-
-                f_layer = FeatureLayer(name=layer_name, layer=layer, idx=feature_idx)
                 self.item_features.append(f_layer)
                 self.item_feature_dimension += feature_embedding_size
+            elif feature.dtype == "int64":
+                layer_name = f"item_{feature.name}_numerical"
+                f_layer = NumericalLayer(
+                    name=layer_name,
+                    idx=feature_idx,
+                )
+                self.item_features.append(f_layer)
+                self.item_feature_dimension += 1
 
         aux_user_id_dimensions = self.user_feature_dimension + embedding_size
         aux_item_id_dimensions = self.item_feature_dimension + embedding_size
@@ -81,7 +102,10 @@ class ALS(BaseModel):
         user_factor = torch.cat([user, user_features], dim=1)
         item_factor = torch.cat([item, item_features], dim=1)
 
-        pred = self.user_biases(user) + self.item_biases(item)
+        pred = self.user_biases(interactions[:, 0].long()) + self.item_biases(
+            interactions[:, 1].long()
+        )
+
         pred += (user_factor * item_factor).sum(1, keepdim=True)
         return pred.squeeze()
 
@@ -102,16 +126,51 @@ class ALS(BaseModel):
         return r
 
     def training_step(self, batch):
+        user_opt, item_opt = self.optimizers()
+
+        ##########################
+        # User factor            #
+        ##########################
         yhat = self(*batch).float()
         yhat = torch.squeeze(yhat)
 
         ytrue = batch[0][:, 2].float()
 
-        loss = self.criterion(yhat, ytrue)
+        user_loss = self.criterion(yhat, ytrue)
 
-        self.log("train/step_loss", loss, on_step=True, on_epoch=False, prog_bar=False)
+        user_opt.zero_grad()
+        self.manual_backward(user_loss)
+        user_opt.step()
+        ##########################
+        # Item factor            #
+        ##########################
+        yhat = self(*batch).float()
+        yhat = torch.squeeze(yhat)
 
-        return loss
+        ytrue = batch[0][:, 2].float()
+
+        item_loss = self.criterion(yhat, ytrue)
+
+        item_opt.zero_grad()
+        self.manual_backward(item_loss)
+        item_opt.step()
+
+        self.log(
+            "train/user_step_loss",
+            user_loss,
+            on_step=True,
+            on_epoch=False,
+            prog_bar=False,
+        )
+        self.log(
+            "train/item_step_loss",
+            item_loss,
+            on_step=True,
+            on_epoch=False,
+            prog_bar=False,
+        )
+        # NOT displaying loss on tqdm progress bar of pytorch lightning, need to fix this
+        # TODO
 
     def validation_step(self, batch):
         yhat = self(*batch).float()
@@ -127,17 +186,15 @@ class ALS(BaseModel):
     def configure_optimizers(self):
         user_weights = [
             self.user_embedding.weight,
-            self.user_features.weight,
             self.user_biases.weight,
-        ]
+        ] + [layer.weight for layer in self.user_features if hasattr(layer, "weight")]
         item_weights = [
             self.item_embedding.weight,
-            self.item_features.weight,
             self.item_biases.weight,
-        ]
+        ] + [layer.weight for layer in self.item_features if hasattr(layer, "weight")]
 
         # Need to figure out how to do the custom loss steps, when i get
         # internet
         item_optimizer = torch.optim.SGD(user_weights, self.lr_rate)
         user_optimizer = torch.optim.SGD(item_weights, self.lr_rate)
-        return [item_optimizer, user_optimizer]
+        return item_optimizer, user_optimizer
