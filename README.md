@@ -1,4 +1,4 @@
-# pytorch-recommenders
+# TorchRecSys
 
 
 [![Tests](https://github.com/jiwidi/torchrecsys/actions/workflows/pytest.yml/badge.svg)](https://github.com/jiwidi/torchrecsys/actions/workflows/pytest.yml)
